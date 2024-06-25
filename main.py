@@ -1,4 +1,4 @@
-from Izing import metropolis
+from Izing_nd import metropolis
 import numpy as np
 import matplotlib.pyplot as plt
 
