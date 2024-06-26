@@ -42,6 +42,7 @@ def plot_magnetization_energy(magnetization, energies):
   ax.plot(magnetization)#[N//2:])
   ax.set_xlabel('Algorithm Time Steps')
   ax.set_ylabel(r'Average Magnetization $\bar{m}$')
+  ax.set_ylim(-1,1)
   ax.grid()
   ax = axes[1]
   ax.plot(energies)#[N//2:])
