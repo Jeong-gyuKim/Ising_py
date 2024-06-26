@@ -2,7 +2,7 @@ import numpy as np
 
 def metropolis(lattice, energy, Temp, L=10, dim=2):
     lattice = lattice.copy()
-    spin = np.sum(lattice)/L**dim
+    magnetization = np.sum(lattice)/L**dim
     while True:
       coord = np.random.randint(L, size=dim)
       s_i = lattice[tuple(coord)]
@@ -27,5 +27,5 @@ def metropolis(lattice, energy, Temp, L=10, dim=2):
       if dE < 0 or np.exp(-dE/Temp) > np.random.random():
           lattice[tuple(coord)] = s_f
           energy += dE
-          spin = np.sum(lattice)/L**dim
-      yield lattice, energy, spin
+          magnetization = np.sum(lattice)/L**dim
+      yield lattice, energy, magnetization

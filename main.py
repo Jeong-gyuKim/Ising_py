@@ -1,4 +1,4 @@
-from Izing_2d import metropolis, plot_spin_energy, get_lattice, get_kernel, get_energy
+from Izing_2d import metropolis, plot_magnetization_energy, get_lattice, get_kernel, get_energy
 
 #ising model
 L = 10
@@ -9,12 +9,12 @@ N=10**6
 kernel, lattice = get_kernel(), get_lattice(L, init_up_rate)
 energy = get_energy(lattice, kernel)
 
-spins, energies = [], []
+magnetizations, energies = [], []
 for i, x in enumerate(metropolis(lattice, energy, Temp, L)):
     lattice, energy, spin = x
-    spins.append(spin)
+    magnetizations.append(spin)
     energies.append(energy)
     if i >= N:
         break
 
-plot_spin_energy(spins, energies)
+plot_magnetization_energy(magnetizations, energies)

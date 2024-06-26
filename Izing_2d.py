@@ -7,7 +7,7 @@ import numba
 @numba.njit("UniTuple(i8[:], 2)(i8[:,:], f8, f8, i8)", nopython=True, nogil=True)
 def metropolis(lattice, energy, Temp, L):
     lattice = lattice.copy()
-    spin = np.sum(lattice)/L**2
+    magnetization = np.sum(lattice)/L**2
     while True:
       x = np.random.randint(0,L)
       y = np.random.randint(0,L)
@@ -33,15 +33,15 @@ def metropolis(lattice, energy, Temp, L):
       if dE < 0 or np.exp(-dE/Temp) > np.random.random():
           lattice[x,y] = s_f
           energy += dE
-          spin = np.sum(lattice)/L**2
-      yield lattice, energy, spin
+          magnetization = np.sum(lattice)/L**2
+      yield lattice, energy, magnetization
 
-def plot_spin_energy(spins, energies):
+def plot_magnetization_energy(magnetization, energies):
   fig, axes = plt.subplots(1, 2, figsize=(12,4))
   ax = axes[0]
-  ax.plot(spins)#[N//2:])
+  ax.plot(magnetization)#[N//2:])
   ax.set_xlabel('Algorithm Time Steps')
-  ax.set_ylabel(r'Average Spin $\bar{m}$')
+  ax.set_ylabel(r'Average Magnetization $\bar{m}$')
   ax.grid()
   ax = axes[1]
   ax.plot(energies)#[N//2:])
@@ -49,7 +49,7 @@ def plot_spin_energy(spins, energies):
   ax.set_ylabel(r'Energy $E$')
   ax.grid()
   fig.tight_layout()
-  fig.suptitle(r'Evolution of Average Spin and Energy', y=1.07, size=18)
+  fig.suptitle(r'Evolution of Average Magnetization and Energy', y=1.07, size=18)
   plt.show()
 
 def get_lattice(L, init_up_rate):
