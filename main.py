@@ -1,19 +1,13 @@
-from Izing_nd import metropolis
+from Izing_2d import metropolis
 import numpy as np
 import matplotlib.pyplot as plt
 
 #ising model
-L = 10
-dim = 2
-init_up_rate = 0.25
-Temp = 1
-
-kernel = np.array([[False,  True, False],
-                   [ True, False,  True],
-                   [False,  True, False]])
+L,dim,init_up_rate,Temp = 10,2,0.25,100
+kernel = np.array([[False,  True, False], [ True, False,  True], [False,  True, False]])
 
 spins, energies = [], []
-N=1000000
+N=10**6
 
 lattice = np.where(np.random.random([L]*dim)<init_up_rate,1,-1)
 energy = 0
