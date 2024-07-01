@@ -2,15 +2,16 @@ from Izing_2d import metropolis, plot_magnetization_energy, get_lattice, get_ker
 
 #ising model
 L = 10
+h = 0.6
 init_up_rate = 0.25
-Temp = 100
+Temp = 0.01
 N=10**6
 
 kernel, lattice = get_kernel(), get_lattice(L, init_up_rate)
-energy = get_energy(lattice, kernel)
+energy = get_energy(lattice, kernel, h)
 
 magnetizations, energies = [], []
-for i, x in enumerate(metropolis(lattice, energy, Temp, L)):
+for i, x in enumerate(metropolis(lattice, energy, Temp, L, h)):
     lattice, energy, spin = x
     magnetizations.append(spin)
     energies.append(energy)

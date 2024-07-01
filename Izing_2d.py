@@ -4,8 +4,8 @@ from scipy.ndimage import convolve
 import numba
 
 #Metropolis algorithm
-@numba.njit("UniTuple(i8[:], 2)(i8[:,:], f8, f8, i8)", nopython=True, nogil=True)
-def metropolis(lattice, energy, Temp, L):
+@numba.njit("UniTuple(i8[:], 2)(i8[:,:], f8, f8, i8, f8)", nopython=True, nogil=True)
+def metropolis(lattice, energy, Temp, L, h):
     lattice = lattice.copy()
     magnetization = np.sum(lattice)/L**2
     while True:
@@ -14,8 +14,8 @@ def metropolis(lattice, energy, Temp, L):
       s_i = lattice[x, y]
       s_f = - s_i
 
-      E_i = 0
-      E_f = 0
+      E_i = - h * s_i
+      E_f = - h * s_f
       if x>0:
             E_i += -s_i*lattice[x-1,y]
             E_f += -s_f*lattice[x-1,y]
@@ -59,5 +59,5 @@ def get_lattice(L, init_up_rate):
 def get_kernel():
      return np.array([[False,  True, False], [ True, False,  True], [False,  True, False]])
 
-def get_energy(lattice, kernel):
-     return (-lattice * convolve(lattice, kernel, mode='constant', cval=0)).sum()
+def get_energy(lattice, kernel, h):
+     return (-lattice * convolve(lattice, kernel, mode='constant', cval=0)).sum() - h * (lattice).sum()
