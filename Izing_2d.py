@@ -79,6 +79,8 @@ def multi_metropolis(Temp_range, L_range, N, n):
                          magnetizations[i] = magnetization
                     energies /= L**2
                     magnetizations /= L**2
+                    
+                    init_up_rate = abs(np.mean(magnetizations))
                
                     mean_data[:,j] = np.array([
                          abs(np.mean(magnetizations)),
