@@ -54,7 +54,7 @@ def multi_metropolis(Temp_range, L_range, N, n):
                          for x in range(0,L):
                               result[y,x] = np.sum(padded[y:y+3,x:x+3]*kernel)
                                         
-                    energy = result.sum()/2
+                    energy = -result.sum()/2
                     
                     energies, magnetizations = np.zeros(shape=(N,), dtype=np.float64), np.zeros(shape=(N,), dtype=np.float64)
                     for i in range(N):
