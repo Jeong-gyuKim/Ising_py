@@ -1,28 +1,8 @@
-from Izing_2d import metropolis, plot_magnetization_energy, get_lattice, get_kernel, get_energy, multi_metropolis
+from new_ising import multi_metropolis
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 
-'''
-#ising model
-L = 10
-h = 0
-init_up_rate = 1
-Temp = 2.2
-N=10**7
-kernel = get_kernel()
-
-lattice = get_lattice(L, init_up_rate)
-energy = get_energy(lattice, kernel, h)
-magnetization = np.sum(lattice)
-
-#lattice, energies, magnetizations = metropolis(lattice, energy, magnetization, Temp, L, h, N)
-#print(abs(np.mean(magnetizations)), np.mean(energies))
-
-#plot_magnetization_energy(magnetizations, energies)
-'''
-
-result = multi_metropolis(np.arange(0.01,3,0.01), np.arange(10,60,10), 10**6, 10)
+result = multi_metropolis(np.arange(0.01,8,0.01), np.arange(4,14,2), 10**7, 20)
 
 df = pd.DataFrame(result, columns=['L', 'Temp', 'mM', 'sM', 'mE', 'sE', 'M2', 'E2', 'M4', 'EM', 'EM2'])
 

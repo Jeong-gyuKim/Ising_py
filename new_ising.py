@@ -1,34 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.ndimage import convolve
 import numba
-
-#Metropolis algorithm
-@numba.njit(nopython=True, nogil=True)
-def metropolis(lattice, energy, magnetization, Temp, L, h, N):
-     lattice = lattice.copy()
-     energies, magnetizations = np.zeros(shape=(N,), dtype=np.float64), np.zeros(shape=(N,), dtype=np.float64)
-     for i in range(N):
-          x = np.random.randint(0,L)
-          y = np.random.randint(0,L)
-          
-          s_i = lattice[x, y]
-          
-          E_i = -h
-          E_i -= lattice[(x-1)%L,y]
-          E_i -= lattice[(x+1)%L,y]
-          E_i -= lattice[x,(y-1)%L]
-          E_i -= lattice[x,(y+1)%L]
-
-          dE = -2 * s_i * E_i
-          
-          if dE < 0 or np.exp(-dE/Temp) > np.random.random():
-               lattice[x,y] = - s_i
-               energy += dE
-               magnetization += -2 * s_i
-          energies[i] = energy
-          magnetizations[i] = magnetization
-     return lattice, energies/L**2, magnetizations/L**2
 
 @numba.njit(nopython=True, nogil=True)
 def multi_metropolis(Temp_range, L_range, N, n):
@@ -77,8 +48,6 @@ def multi_metropolis(Temp_range, L_range, N, n):
                               magnetization += -2 * s_i
                          energies[i] = energy
                          magnetizations[i] = magnetization
-                    #energies /= L**2
-                    #magnetizations /= L**2
                     
                     init_up_rate = (abs(np.mean(magnetizations))+1)/2
                
@@ -95,30 +64,3 @@ def multi_metropolis(Temp_range, L_range, N, n):
                print(results[-1][0:2])
      #print("L, T, m, sm, e, se, m2, e2, m4, em, em2")
      return results
-
-def plot_magnetization_energy(magnetization, energies):
-     fig, axes = plt.subplots(1, 2, figsize=(12,4))
-     ax = axes[0]
-     ax.plot(magnetization)
-     ax.set_xlabel('Algorithm Time Steps')
-     ax.set_ylabel(r'Average Magnetization $\bar{m}$')
-     ax.set_ylim(-1.1,1.1)
-     ax.grid()
-     ax = axes[1]
-     ax.plot(energies)
-     ax.set_xlabel('Algorithm Time Steps')
-     ax.set_ylabel(r'Energy $E$')
-     ax.set_ylim(-2.1,2.1)
-     ax.grid()
-     fig.tight_layout()
-     fig.suptitle(r'Evolution of Average Magnetization and Energy', y=1.07, size=18)
-     plt.show()
-
-def get_lattice(L, init_up_rate):
-     return np.where(np.random.random([L,L])<init_up_rate,1,-1)
-
-def get_kernel():
-     return np.array([[False,  True, False], [ True, False,  True], [False,  True, False]])
-
-def get_energy(lattice, kernel, h):
-     return (-lattice * convolve(lattice, kernel, mode='wrap')).sum()/2 - h * (lattice).sum()
