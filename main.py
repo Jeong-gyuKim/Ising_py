@@ -2,7 +2,7 @@ from new_ising import multi_metropolis
 import numpy as np
 import pandas as pd
 
-result = multi_metropolis(np.arange(0.01,8,0.01), np.arange(4,14,2), 10**7, 20)
+result = multi_metropolis(np.arange(0.01,8,0.01), np.arange(4,14,2), 10**6, 10)
 
 df = pd.DataFrame(result, columns=['L', 'Temp', 'mM', 'sM', 'mE', 'sE', 'M2', 'E2', 'M4', 'EM', 'EM2'])
 

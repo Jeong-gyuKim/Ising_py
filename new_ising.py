@@ -61,6 +61,6 @@ def multi_metropolis(Temp_range, L_range, N, n):
                          np.mean(energies * magnetizations**2)
                     ])
                results.append([L, Temp, np.mean(mean_data[0]), np.std(mean_data[0]), np.mean(mean_data[1]), np.std(mean_data[1]), np.mean(mean_data[2]), np.mean(mean_data[3]), np.mean(mean_data[4]), np.mean(mean_data[5]), np.mean(mean_data[6])])
-               print(results[-1][0:2])
+               #print(results[-1][0:2])
      #print("L, T, m, sm, e, se, m2, e2, m4, em, em2")
      return results
