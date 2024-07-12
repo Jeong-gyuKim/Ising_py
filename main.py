@@ -1,8 +1,24 @@
-from new_ising import multi_metropolis
+from new_ising import multi_metropolis, calc_time
 import numpy as np
 import pandas as pd
 
-result = multi_metropolis(np.arange(0.01,8,0.01), np.arange(4,14,2), 10**6, 10)
+init_L = 4#@param{type:"integer"}
+final_L = 14#@param{type:"integer"}
+step_L = 2#@param{type:"integer"}
+
+init_Temp = 0.01#@param{type:"number"}
+final_Temp = 8#@param{type:"number"}
+step_Temp = 0.01#@param{type:"number"}
+
+N = 10**7#@param{type:"integer"}
+n=20#@param{type:"integer"}
+
+T_range = np.arange(init_Temp,final_Temp,step_Temp)
+L_range = np.arange(init_L,final_L,step_L)
+
+calc_time(len(T_range), len(L_range), N, n)
+
+result = multi_metropolis(T_range, L_range, N, n)
 
 df = pd.DataFrame(result, columns=['L', 'Temp', 'mM', 'sM', 'mE', 'sE', 'M2', 'E2', 'M4', 'EM', 'EM2'])
 

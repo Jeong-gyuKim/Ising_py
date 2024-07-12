@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 show = 'M' #@param ['M', 'E', 'C_v', 'X', 'u']
-error = True #@param {type:"boolean"}
+error = False #@param {type:"boolean"}
 
 dic = {'M': ['mM','sM','Magnetization'],
        'E': ['mE','sE','Energy'],
