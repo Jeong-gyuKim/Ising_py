@@ -1,3 +1,4 @@
+import pandas as pd
 import numpy as np
 import datetime
 import numba
@@ -6,10 +7,11 @@ import numba
 def multi_metropolis(Temp_range, L_range, N, n):
      kernel = np.array([[False,  True, False], [ True, False,  True], [False,  True, False]])
      results = []
+     print("READY!!")
      for L in L_range:
           init_up_rate = 1
           for Temp in Temp_range:
-               mean_data = np.zeros(shape=(7,n), dtype=np.float64)
+               mean_data = np.zeros(shape=(5,n), dtype=np.float64)
                for j in range(n):
                     lattice = np.where(np.random.random_sample((L,L))<init_up_rate,1,-1)
                     magnetization = np.sum(lattice)
@@ -21,12 +23,12 @@ def multi_metropolis(Temp_range, L_range, N, n):
                     padded[0,:] = padded[-2,:]
                     padded[-1,:] = padded[1,:]
                     
-                    result = np.zeros(shape=(L,L))
+                    convolution = np.zeros(shape=(L,L))
                     for y in range(0,L):
                          for x in range(0,L):
-                              result[y,x] = np.sum(padded[y:y+3,x:x+3]*kernel)
+                              convolution[y,x] = np.sum(padded[y:y+3,x:x+3]*kernel)
                                         
-                    energy = -result.sum()
+                    energy = -convolution.sum()
                     
                     energies, magnetizations = np.zeros(shape=(N,), dtype=np.float64), np.zeros(shape=(N,), dtype=np.float64)
                     for i in range(N):
@@ -50,20 +52,24 @@ def multi_metropolis(Temp_range, L_range, N, n):
                          energies[i] = energy
                          magnetizations[i] = magnetization
                     
-                    init_up_rate = (abs(np.mean(magnetizations))/L**2+1)/2
+                    init_up_rate = (abs(np.mean(magnetizations)/L**2)+1)/2
                
                     mean_data[:,j] = np.array([
-                         abs(np.mean(magnetizations))/L**2,
-                         np.mean(energies),
-                         np.mean(magnetizations**2),
-                         np.mean(energies**2),
-                         np.mean(magnetizations**4),
-                         np.mean(energies * magnetizations),
-                         np.mean(energies * magnetizations**2)
+                         #abs(np.mean(magnetizations)),#M
+                         abs(np.mean(magnetizations))/L**2,#m
+                         np.mean(energies)/2,#E
+                         #np.mean(energies)/L**2,#e
+                         (1/Temp)/(L**2)*(np.mean(magnetizations**2)-np.mean(magnetizations)**2),#X
+                         (1/Temp)**2/L**2*(np.mean(energies**2)-np.mean(energies)**2),#c
+                         1-np.mean(magnetizations**4)/(3*np.mean(magnetizations**2)**2),#u
                     ])
-               results.append([L, Temp, np.mean(mean_data[0]), np.std(mean_data[0]), np.mean(mean_data[1]), np.std(mean_data[1]), np.mean(mean_data[2]), np.mean(mean_data[3]), np.mean(mean_data[4]), np.mean(mean_data[5]), np.mean(mean_data[6])])
-               print(results[-1][0:2])
-     #print("L, T, m, sm, e, se, m2, e2, m4, em, em2")
+                    
+               result = [L, Temp]
+               for data in mean_data:
+                    result.extend([np.mean(data), np.std(data)])
+                    
+               results.append(result)
+               #print(results[-1][0:2])
      return results
 
 def calc_time(T, L, N, n):
@@ -71,3 +77,8 @@ def calc_time(T, L, N, n):
      print(f'약 {str(datetime.timedelta(seconds = calc_time))} 예상')
      print(f'시작: {datetime.datetime.now()}')
      print(f'종료: {str(datetime.datetime.now() + datetime.timedelta(seconds = calc_time))}')
+     
+def save(result):
+     print(f'종료: {datetime.datetime.now()}')
+     df = pd.DataFrame(result, columns=['L', 'Temp', 'm', 'sm', 'e', 'se', 'x', 'sx', 'c', 'sc', 'u', 'su'])
+     df.to_csv("result.csv", index=False, encoding='utf-8', header=['L', 'Temp', 'm', 'sm', 'e', 'se', 'x', 'sx', 'c', 'sc', 'u', 'su'])
