@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 #ising model
-L = 5
+L = 4
 h = 0
-init_up_rate = 0.5
-Temp = 1.5
+init_up_rate = 1
+Temp = 2.2
 N=10**6
 
 kernel = get_kernel()
@@ -17,4 +17,12 @@ magnetization = np.sum(lattice)
 
 lattice, energies, magnetizations = metropolis(lattice, energy, magnetization, Temp, L, h, N)
 print(abs(np.mean(magnetizations)), np.mean(energies))
-plot_magnetization_energy(magnetizations, energies)
+#plot_magnetization_energy(magnetizations, energies)
+
+fig, ax = plt.subplots()
+hists = ax.hist(energies, density=1)
+#x = np.linspace(-2, 2, 100)
+#y = np.exp(-(x*L**2)/Temp)
+#ax.plot(x,y/y[0])
+plt.xlim([-2,2])
+plt.show()
