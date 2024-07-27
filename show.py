@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-show = 'm' #@param ['m', 'e', 'c', 'x', 'u']
+show = 'c' #@param ['m', 'e', 'c', 'x', 'u']
 error = True #@param {type:"boolean"}
 
 dic = {'m': ['m','sm','Magnetization per spin'],

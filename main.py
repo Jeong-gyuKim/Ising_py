@@ -1,7 +1,7 @@
-from new_ising import multi_metropolis, calc_time, save
+from ising import multi_metropolis, calc_time, save
 import numpy as np
 
-init_L = 2#@param{type:"integer"}
+init_L = 4#@param{type:"integer"}
 final_L = 14#@param{type:"integer"}
 step_L = 2#@param{type:"integer"}
 

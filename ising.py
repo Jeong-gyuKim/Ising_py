@@ -12,19 +12,19 @@ def set_init_state(L, init_up_rate, kernel):
 
 @numba.njit(nopython=True, nogil=True)
 def get_energy(lattice, kernel, L):
-  padded = np.zeros(shape=(L+2,L+2))
-  padded[1:-1,1:-1] = lattice
-  padded[:,0] = padded[:,-2]
-  padded[:,-1] = padded[:,1]
-  padded[0,:] = padded[-2,:]
-  padded[-1,:] = padded[1,:]
+     padded = np.zeros(shape=(L+2,L+2))
+     padded[1:-1,1:-1] = lattice
+     padded[:,0] = padded[:,-2]
+     padded[:,-1] = padded[:,1]
+     padded[0,:] = padded[-2,:]
+     padded[-1,:] = padded[1,:]
 
-  convolution = np.zeros(shape=(L,L))
-  for y in range(0,L):
-    for x in range(0,L):
-      convolution[y,x] = np.sum(padded[y:y+3,x:x+3]*kernel)
+     convolution = np.zeros(shape=(L,L))
+     for y in range(0,L):
+          for x in range(0,L):
+               convolution[y,x] = np.sum(padded[y:y+3,x:x+3]*kernel)
 
-  return -convolution.sum()
+     return -convolution.sum()
 
 @numba.njit(nopython=True, nogil=True)
 def metropolis(L, init_up_rate, kernel, N, Temp):
@@ -56,10 +56,10 @@ def metropolis(L, init_up_rate, kernel, N, Temp):
           magnetizations[i] = magnetization
           
      data = np.array([
-               #abs(np.mean(magnetizations)),#M
-               abs(np.mean(magnetizations))/L**2,#m
+               #np.mean(np.absolute(magnetizations)),#M
+               np.mean(np.absolute(magnetizations))/L**2,#m
                np.mean(energies)/2,#E
-               #np.mean(energies)/L**2,#e
+               #np.mean(energies)/2/L**2,#e
                (1/Temp)/(L**2)*(np.mean(magnetizations**2)-np.mean(magnetizations)**2),#X
                (1/Temp)**2/L**2*(np.mean(energies**2)-np.mean(energies)**2),#c
                1-np.mean(magnetizations**4)/(3*np.mean(magnetizations**2)**2),#u
@@ -73,7 +73,7 @@ def multi_metropolis(Temp_range, L_range, N, n):
      results = []
      print("READY!!")
      for L in L_range:
-          init_up_rate = 0.5
+          init_up_rate = 1
           for Temp in Temp_range:
                mean_data = np.zeros(shape=(5,n), dtype=np.float64)
                for j in range(n):

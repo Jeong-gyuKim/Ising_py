@@ -8,7 +8,7 @@ import numba
 def Q(lattice):
   return np.sum(lattice)#M
 
-L_li = [1,2,3,4]  # Grid size
+L_li = [2,4]  # Grid size
 T_li = np.arange(0.1, 3, 0.1)  # Example temperature range
 
 df = pd.DataFrame()
