@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-show = 'c' #@param ['m', 'e', 'c', 'x', 'u']
+show = 'e' #@param ['m', 'e', 'c', 'x', 'u']
 error = True #@param {type:"boolean"}
 
 dic = {'m': ['m','sm','Magnetization per spin'],
@@ -28,8 +28,8 @@ df2['x'] = df2['Temp'].apply(lambda x: (0) if x<Tc else 1)
 df2['u'] = df2['Temp'].apply(lambda x: (0) if x<Tc else 1)
 
 #print(df2)
-if show in ['m']:
-  plt.plot(df2['Temp'], df2[show], label=f'L=inf')
+#if show in ['m']:
+  #plt.plot(df2['Temp'], df2[show], label=f'L=inf')
 
 plt.legend()
 plt.xlabel('Temperature')

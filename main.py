@@ -5,8 +5,8 @@ init_L = 4#@param{type:"integer"}
 final_L = 14#@param{type:"integer"}
 step_L = 2#@param{type:"integer"}
 
-init_Temp = 1.5#@param{type:"number"}
-final_Temp = 3#@param{type:"number"}
+init_Temp = 0.1#@param{type:"number"}
+final_Temp = 8#@param{type:"number"}
 step_Temp = 0.1#@param{type:"number"}
 
 N = 10**6#@param{type:"integer"}
