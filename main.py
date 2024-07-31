@@ -6,7 +6,7 @@ final_L = 14#@param{type:"integer"}
 step_L = 2#@param{type:"integer"}
 
 init_Temp = 0.1#@param{type:"number"}
-final_Temp = 8#@param{type:"number"}
+final_Temp = 5#@param{type:"number"}
 step_Temp = 0.1#@param{type:"number"}
 
 sweep = 1000#@param{type:"integer"}
