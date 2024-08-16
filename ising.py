@@ -4,6 +4,7 @@ import numpy as np
 import datetime
 import numba
 
+#초기 격자 생성
 @numba.njit(nopython=True, nogil=True)
 def set_init_state(L, init_up_rate):
     lattice = np.where(np.random.random_sample((L,L))<init_up_rate,1,-1)
@@ -11,6 +12,7 @@ def set_init_state(L, init_up_rate):
     energy = get_energy(lattice, L)
     return lattice, magnetization, energy
 
+#총 에너지 계산
 @numba.njit(nopython=True, nogil=True)
 def get_energy(lattice, L):
      kernel = np.array([[False,  True, False], 
@@ -31,6 +33,7 @@ def get_energy(lattice, L):
 
      return (-lattice * convolution).sum()
 
+#x, y 좌표의 스핀 뒤집을 때의 에너지 변화
 @numba.njit(nopython=True, nogil=True)
 def deltaE(lattice, x, y, L):
     E_i = 0
@@ -42,6 +45,7 @@ def deltaE(lattice, x, y, L):
     dE = 2 * lattice[x, y] * E_i
     return dE
 
+#메트로폴리스 알고리즘 실행
 @numba.njit(nopython=True, nogil=True)
 def metropolis(L, init_up_rate, sweep, T):
      lattice, magnetization, energy = set_init_state(L, init_up_rate)
@@ -66,6 +70,7 @@ def metropolis(L, init_up_rate, sweep, T):
      
      return energies, magnetizations
 
+#초기의 수렴 전 데이터 제거(burn-in) 1-sigma면 수렴 판단
 @numba.njit(nopython=True, nogil=True)
 def sigma(arr):
     out = np.where(np.abs(arr - np.mean(arr)) < np.std(arr))[0]
@@ -75,6 +80,7 @@ def sigma(arr):
         out = out[0]
     return arr[out:]
 
+#magnetizations, energies로 물리적 의미 찾기
 @numba.njit(nopython=True, nogil=True)
 def physics(L, T, energies, magnetizations):
      M = np.mean(np.absolute(magnetizations))
@@ -88,30 +94,57 @@ def physics(L, T, energies, magnetizations):
                M / L**2,#m
                #E,#E
                E / L**2,#e
-               (M2 - M**2) / T / (L**2),#X
+               (M2 - M**2) / T / (L**2),#x
                (E2 - E**2) / (T**2) / (L**2),#c
                1 - (M4/(3*M2**2)) if M2!=0 else 0,#u
           ])
      return data
 
+#여러 번 얻은 결과 통계
 @numba.njit(nopython=True, nogil=True)
 def multi_metropolis(Temp_range, L_range, sweep, n, init_up_rate):
      results = []
      print("READY!!")
      for L in L_range:
+          rate = init_up_rate
           for T in Temp_range:
                mean_data = np.zeros(shape=(5,n), dtype=np.float64)
                for j in range(n):
-                    energies, magnetizations = metropolis(L, init_up_rate, sweep, T)
+                    energies, magnetizations = metropolis(L, rate, sweep, T)
                     energies, magnetizations = sigma(energies), sigma(magnetizations)
                     mean_data[:,j] = physics(L, T, energies, magnetizations)
+               rate = np.mean(mean_data[0])#m
+               rate = (rate + 1) / 2
                result = [L, T]
                for data in mean_data:
-                    result.extend([np.mean(data), np.std(data)])
+                    result.extend([np.mean(data), 2*np.std(data)])
                results.append(result)
                #print(results[-1][0:2])
      return results
 
+
+# 오차 범위 내에 있는지 확인하고 새로운 값을 계산하는 함수
+def calc_new_values(result):
+     df = pd.DataFrame(result, columns=['L', 'Temp', 'm', 'sm', 'e', 'se', 'x', 'sx', 'c', 'sc', 'u', 'su'])
+     grouped = df.groupby(['L', 'Temp'])
+     new_data = []
+
+     for name, group in grouped:
+          new_row = {'L': name[0], 'Temp': name[1]}
+          for col in ['m', 'e', 'x', 'c', 'u']:
+               q1, q2 = group[col].values
+               sq1, sq2 = group['s' + col].values
+               if abs(q1 - q2) <= max(sq1, sq2):
+                    new_row[col] = np.mean([q1, q2])
+                    new_row['s' + col] = max(sq1, sq2)
+               else:
+                    new_row[col] = np.nan
+                    new_row['s' + col] = np.nan
+          new_data.append(new_row)
+
+     return pd.DataFrame(new_data)
+
+#대략적 시간 계산
 def calc_time(T_range, L_range, sweep, n):
      calc_time = 0
      for L in L_range:
@@ -120,6 +153,7 @@ def calc_time(T_range, L_range, sweep, n):
      print(f'시작: {datetime.datetime.now()}')
      print(f'종료: {str(datetime.datetime.now() + datetime.timedelta(seconds = calc_time))}')
      
+#데이터 저장
 def save(result, pth=''):
      print(f'종료: {datetime.datetime.now()}')
      df = pd.DataFrame(result, columns=['L', 'Temp', 'm', 'sm', 'e', 'se', 'x', 'sx', 'c', 'sc', 'u', 'su'])
@@ -128,7 +162,7 @@ def save(result, pth=''):
      else:
           df.to_csv("result.csv", index=False, encoding='utf-8', header=['L', 'Temp', 'm', 'sm', 'e', 'se', 'x', 'sx', 'c', 'sc', 'u', 'su'])
           
-
+#데이터 보이기
 def show(show, error = True):
     #show = 'm' #@param ['m', 'e', 'c', 'x', 'u']
     #error = True #@param {type:"boolean"}
@@ -142,17 +176,17 @@ def show(show, error = True):
     df = pd.read_csv('result.csv')
     for i in sorted(set(df['L'])):
       if error:
-        plt.errorbar(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], yerr=df[df['L']==i][dic[show][1]], label=f'L={i}')
+        plt.errorbar(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], yerr=df[df['L']==i][dic[show][1]], label=f'L={i}',capsize=4)
       else:
         plt.plot(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], label=f'L={i}')
 
-#Tc = 2/np.log(1+np.sqrt(2))
-#df2 = pd.DataFrame(np.array(df[df['L']==i]['Temp']), columns=['Temp'])
-#df2['m'] = df2['Temp'].apply(lambda x: (1-np.sinh(2/x)**-4)**(1/8) if x<Tc else 0)
+     #Tc = 2/np.log(1+np.sqrt(2))
+     #df2 = pd.DataFrame(np.array(df[df['L']==i]['Temp']), columns=['Temp'])
+     #df2['m'] = df2['Temp'].apply(lambda x: (1-np.sinh(2/x)**-4)**(1/8) if x<Tc else 0)
 
-#print(df2)
-#if show in ['m']:
-  #plt.plot(df2['Temp'], df2[show], label=f'L=inf')
+     #print(df2)
+     #if show in ['m']:
+          #plt.plot(df2['Temp'], df2[show], label=f'L=inf')
 
     plt.legend()
     plt.xlabel('Temperature')
@@ -161,6 +195,7 @@ def show(show, error = True):
     plt.title(show)
     plt.show()
     
+#몬테카를로 시간에 따른 magnetization, energie 보이기
 def plot_magnetization_energy(magnetization, energies):
     fig, axes = plt.subplots(1, 2, figsize=(12,4))
     ax = axes[0]
