@@ -72,7 +72,7 @@ def metropolis(L, init_up_rate, sweep, T):
 
 #초기의 수렴 전 데이터 제거(burn-in) 1-sigma면 수렴 판단
 @numba.njit(nopython=True, nogil=True)
-def sigma(arr):
+def burn_in(arr):
     out = np.where(np.abs(arr - np.mean(arr)) < np.std(arr))[0]
     if len(out) ==0:
         out = 0
@@ -102,7 +102,7 @@ def physics(L, T, energies, magnetizations):
 
 #여러 번 얻은 결과 통계
 @numba.njit(nopython=True, nogil=True)
-def multi_metropolis(Temp_range, L_range, sweep, n, init_up_rate):
+def multi_metropolis(Temp_range, L_range, sweep, n, init_up_rate, sigma):
      results = []
      print("READY!!")
      for L in L_range:
@@ -111,13 +111,13 @@ def multi_metropolis(Temp_range, L_range, sweep, n, init_up_rate):
                mean_data = np.zeros(shape=(5,n), dtype=np.float64)
                for j in range(n):
                     energies, magnetizations = metropolis(L, rate, sweep, T)
-                    energies, magnetizations = sigma(energies), sigma(magnetizations)
+                    energies, magnetizations = burn_in(energies), burn_in(magnetizations)
                     mean_data[:,j] = physics(L, T, energies, magnetizations)
                rate = np.mean(mean_data[0])#m
                rate = (rate + 1) / 2
                result = [L, T]
                for data in mean_data:
-                    result.extend([np.mean(data), 2*np.std(data)])
+                    result.extend([np.mean(data), sigma*np.std(data)])
                results.append(result)
                #print(results[-1][0:2])
      return results
@@ -176,9 +176,11 @@ def show(show, error = True):
     df = pd.read_csv('result.csv')
     for i in sorted(set(df['L'])):
       if error:
-        plt.errorbar(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], yerr=df[df['L']==i][dic[show][1]], label=f'L={i}',capsize=4)
+          #plt.errorbar(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], yerr=df[df['L']==i][dic[show][1]], label=f'L={i}', capsize=4)
+          plt.errorbar(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], yerr=df[df['L']==i][dic[show][1]], alpha=.75, fmt=':', capsize=3, capthick=1, label=f'L={i}')
+          plt.fill_between(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]] - df[df['L']==i][dic[show][1]], df[df['L']==i][dic[show][0]] + df[df['L']==i][dic[show][1]], alpha=.25)
       else:
-        plt.plot(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], label=f'L={i}')
+          plt.plot(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], label=f'L={i}')
 
      #Tc = 2/np.log(1+np.sqrt(2))
      #df2 = pd.DataFrame(np.array(df[df['L']==i]['Temp']), columns=['Temp'])

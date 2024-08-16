@@ -1,2 +1,2 @@
 from ising import show
-show('m')
+show('u')
