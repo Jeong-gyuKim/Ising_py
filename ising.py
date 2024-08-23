@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import datetime
 import numba
+import pickle
 
 #초기 격자 생성
 @numba.njit(nopython=True, nogil=True)
@@ -73,12 +74,12 @@ def metropolis(L, init_up_rate, sweep, T):
 #초기의 수렴 전 데이터 제거(burn-in) 1-sigma면 수렴 판단
 @numba.njit(nopython=True, nogil=True)
 def burn_in(arr):
-    out = np.where(np.abs(arr - np.mean(arr)) < np.std(arr))[0]
-    if len(out) ==0:
-        out = 0
-    else:
-        out = out[0]
-    return arr[out:]
+     out = np.where(np.abs(arr - np.mean(arr)) < np.std(arr))[0]
+     if len(out) ==0:
+          out = 0
+     else:
+          out = out[0]
+     return arr[out:]
 
 #magnetizations, energies로 물리적 의미 찾기
 @numba.njit(nopython=True, nogil=True)
@@ -101,8 +102,8 @@ def physics(L, T, energies, magnetizations):
      return data
 
 #여러 번 얻은 결과 통계
-@numba.njit(nopython=True, nogil=True)
-def multi_metropolis(Temp_range, L_range, sweep, n, init_up_rate, sigma):
+#@numba.njit(nopython=True, nogil=True)
+def statistics(Temp_range, L_range, sweep, n, sigma, init_up_rate = 0.5):
      results = []
      print("READY!!")
      for L in L_range:
@@ -119,7 +120,6 @@ def multi_metropolis(Temp_range, L_range, sweep, n, init_up_rate, sigma):
                for data in mean_data:
                     result.extend([np.mean(data), sigma*np.std(data)])
                results.append(result)
-               #print(results[-1][0:2])
      return results
 
 
@@ -161,57 +161,59 @@ def save(result, pth=''):
           df.to_csv(pth+"/result.csv", index=False, encoding='utf-8', header=['L', 'Temp', 'm', 'sm', 'e', 'se', 'x', 'sx', 'c', 'sc', 'u', 'su'])
      else:
           df.to_csv("result.csv", index=False, encoding='utf-8', header=['L', 'Temp', 'm', 'sm', 'e', 'se', 'x', 'sx', 'c', 'sc', 'u', 'su'])
-          
+
+#피클 쓰기         
+def write(data, filename):
+     with open(filename,'wb') as fw:
+          pickle.dump(data, fw)
+
+#피클 읽기
+def read(filename):
+     with open(filename,'rb') as fr:
+          data = pickle.load(fr)
+     return data
+
 #데이터 보이기
 def show(show, error = True):
-    #show = 'm' #@param ['m', 'e', 'c', 'x', 'u']
-    #error = True #@param {type:"boolean"}
+     #show = 'm' #@param ['m', 'e', 'c', 'x', 'u']
+     #error = True #@param {type:"boolean"}
 
-    dic = {'m': ['m','sm','Magnetization per spin', [-0.1,1.1]],
-       'e': ['e','se','Energy per spin', [-2.1,0.1]],
-       'c': ['c','sc', 'Specific heat per spin', [-0.1,2.1]],
-       'x': ['x','sx', 'Magnetic susceptibility', [-0.1,4.1]],
-       'u': ['u','su','Binder cumulant', [-0.1,0.77]]}
+     dic = {'m': ['m','sm','Magnetization per spin', [-0.1,1.1]],
+          'e': ['e','se','Energy per spin', [-2.1,0.1]],
+          'c': ['c','sc', 'Specific heat per spin', [-0.1,2.1]],
+          'x': ['x','sx', 'Magnetic susceptibility', [-0.1,4.1]],
+          'u': ['u','su','Binder cumulant', [-0.1,0.77]]}
 
-    df = pd.read_csv('result.csv')
-    for i in sorted(set(df['L'])):
-      if error:
-          #plt.errorbar(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], yerr=df[df['L']==i][dic[show][1]], label=f'L={i}', capsize=4)
-          plt.errorbar(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], yerr=df[df['L']==i][dic[show][1]], alpha=.75, fmt=':', capsize=3, capthick=1, label=f'L={i}')
-          plt.fill_between(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]] - df[df['L']==i][dic[show][1]], df[df['L']==i][dic[show][0]] + df[df['L']==i][dic[show][1]], alpha=.25)
-      else:
-          plt.plot(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], label=f'L={i}')
-
-     #Tc = 2/np.log(1+np.sqrt(2))
-     #df2 = pd.DataFrame(np.array(df[df['L']==i]['Temp']), columns=['Temp'])
-     #df2['m'] = df2['Temp'].apply(lambda x: (1-np.sinh(2/x)**-4)**(1/8) if x<Tc else 0)
-
-     #print(df2)
-     #if show in ['m']:
-          #plt.plot(df2['Temp'], df2[show], label=f'L=inf')
-
-    plt.legend()
-    plt.xlabel('Temperature')
-    plt.ylabel(dic[show][2])
-    plt.ylim(dic[show][3][0],dic[show][3][1])
-    plt.title(show)
-    plt.show()
+     df = pd.read_csv('result.csv')
+     for i in sorted(set(df['L'])):
+          if error:
+               #plt.errorbar(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], yerr=df[df['L']==i][dic[show][1]], label=f'L={i}', capsize=4)
+               plt.errorbar(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], yerr=df[df['L']==i][dic[show][1]], alpha=.75, fmt=':', capsize=3, capthick=1, label=f'L={i}')
+               plt.fill_between(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]] - df[df['L']==i][dic[show][1]], df[df['L']==i][dic[show][0]] + df[df['L']==i][dic[show][1]], alpha=.25)
+          else:
+               plt.plot(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], label=f'L={i}')
+     plt.legend()
+     plt.xlabel('Temperature')
+     plt.ylabel(dic[show][2])
+     plt.ylim(dic[show][3][0],dic[show][3][1])
+     plt.title(show)
+     plt.show()
     
-#몬테카를로 시간에 따른 magnetization, energie 보이기
+#몬테카를로 시간에 따른 magnetization, energies 보이기
 def plot_magnetization_energy(magnetization, energies):
-    fig, axes = plt.subplots(1, 2, figsize=(12,4))
-    ax = axes[0]
-    ax.plot(magnetization)
-    ax.set_xlabel('Algorithm Time Steps')
-    ax.set_ylabel(r'Average Magnetization $\bar{m}$')
-    ax.set_ylim(-1.1,1.1)
-    ax.grid()
-    ax = axes[1]
-    ax.plot(energies)
-    ax.set_xlabel('Algorithm Time Steps')
-    ax.set_ylabel(r'Energy $E$')
-    ax.set_ylim(-2.1,2.1)
-    ax.grid()
-    fig.tight_layout()
-    fig.suptitle(r'Evolution of Average Magnetization and Energy', y=1.07, size=18)
-    plt.show()
+     fig, axes = plt.subplots(1, 2, figsize=(12,4))
+     ax = axes[0]
+     ax.plot(magnetization)
+     ax.set_xlabel('Algorithm Time Steps')
+     ax.set_ylabel(r'Average Magnetization $\bar{m}$')
+     ax.set_ylim(-1.1,1.1)
+     ax.grid()
+     ax = axes[1]
+     ax.plot(energies)
+     ax.set_xlabel('Algorithm Time Steps')
+     ax.set_ylabel(r'Energy $E$')
+     ax.set_ylim(-2.1,2.1)
+     ax.grid()
+     fig.tight_layout()
+     fig.suptitle(r'Evolution of Average Magnetization and Energy', y=1.07, size=18)
+     plt.show()
