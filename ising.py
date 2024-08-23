@@ -187,13 +187,13 @@ def calc_time(N, n):
      print(f'종료: {str(datetime.datetime.now() + datetime.timedelta(seconds = calc_time))}')
      
 #데이터 저장
-def save(result, pth=''):
+def save(result, pth='', filename='result.csv'):
      print(f'종료: {datetime.datetime.now()}')
      df = pd.DataFrame(result, columns=['L', 'Temp', 'm', 'sm', 'e', 'se', 'x', 'sx', 'c', 'sc', 'u', 'su'])
      if pth:
-          df.to_csv(pth+"/result.csv", index=False, encoding='utf-8', header=['L', 'Temp', 'm', 'sm', 'e', 'se', 'x', 'sx', 'c', 'sc', 'u', 'su'])
+          df.to_csv(pth+"/"+filename, index=False, encoding='utf-8', header=['L', 'Temp', 'm', 'sm', 'e', 'se', 'x', 'sx', 'c', 'sc', 'u', 'su'])
      else:
-          df.to_csv("result.csv", index=False, encoding='utf-8', header=['L', 'Temp', 'm', 'sm', 'e', 'se', 'x', 'sx', 'c', 'sc', 'u', 'su'])
+          df.to_csv(filename, index=False, encoding='utf-8', header=['L', 'Temp', 'm', 'sm', 'e', 'se', 'x', 'sx', 'c', 'sc', 'u', 'su'])
 
 #피클 쓰기         
 def write(data, filename):
@@ -219,12 +219,14 @@ def show(show, error = True, fig = False):
 
      df = pd.read_csv('result.csv')
      for i in sorted(set(df['L'])):
+          df1 = df[df['L']==i].sort_values(by='Temp').dropna(axis=0)
           if error:
-               #plt.errorbar(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], yerr=df[df['L']==i][dic[show][1]], label=f'L={i}', capsize=4)
-               plt.errorbar(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], yerr=df[df['L']==i][dic[show][1]], alpha=.75, fmt=':', capsize=3, capthick=1, label=f'L={i}')
-               plt.fill_between(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]] - df[df['L']==i][dic[show][1]], df[df['L']==i][dic[show][0]] + df[df['L']==i][dic[show][1]], alpha=.25)
+               #plt.errorbar(df1['Temp'], df1[dic[show][0]], yerr=df1[dic[show][1]], label=f'L={i}', capsize=4)
+               
+               plt.errorbar(df1['Temp'], df1[dic[show][0]], yerr=df1[dic[show][1]], alpha=.75, fmt=':', capsize=3, capthick=1, label=f'L={i}')
+               plt.fill_between(df1['Temp'], df1[dic[show][0]] - df1[dic[show][1]], df1[dic[show][0]] + df1[dic[show][1]], alpha=.25)
           else:
-               plt.plot(df[df['L']==i]['Temp'], df[df['L']==i][dic[show][0]], label=f'L={i}')
+               plt.plot(df1['Temp'], df1[dic[show][0]], label=f'L={i}')
      plt.legend()
      plt.xlabel('Temperature')
      plt.ylabel(dic[show][2])
