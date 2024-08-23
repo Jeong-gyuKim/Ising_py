@@ -32,7 +32,7 @@ def get_energy(lattice, L):
           for x in range(0,L):
                convolution[y,x] = np.sum(padded[y:y+3,x:x+3]*kernel)
 
-     return (-lattice * convolution).sum()
+     return (-lattice * convolution).sum() / 2
 
 #x, y 좌표의 스핀 뒤집을 때의 에너지 변화
 @numba.njit(nopython=True, nogil=True)
@@ -48,33 +48,68 @@ def deltaE(lattice, x, y, L):
 
 #메트로폴리스 알고리즘 실행
 @numba.njit(nopython=True, nogil=True)
-def metropolis(L, init_up_rate, sweep, T):
+def metropolis(L, init_up_rate, N, T):
      lattice, magnetization, energy = set_init_state(L, init_up_rate)
-     N = sweep*L**2
      
      energies, magnetizations = np.zeros(shape=(N,), dtype=np.float64), np.zeros(shape=(N,), dtype=np.float64)
-     for i in range(sweep):
-          for j in range(L**2):
-               x = np.random.randint(0,L)
-               y = np.random.randint(0,L)
-               
-               s_i = lattice[x, y]
+     for i in range(N):
+          x = np.random.randint(0,L)
+          y = np.random.randint(0,L)
+          
+          s_i = lattice[x, y]
+          dE = deltaE(lattice, x, y, L)
+          
+          if dE <= 0 or np.exp(-dE/T) > np.random.random():
+               lattice[x,y] = - s_i
+               energy += dE
+               magnetization += -2 * s_i
+          
+          energies[i] = energy
+          magnetizations[i] = magnetization
+     
+     return energies, magnetizations
+
+#울프 알고리즘 실행
+@numba.njit(nopython=True, nogil=True)
+def wolff(L, init_up_rate, N, T):
+     lattice, magnetization, energy = set_init_state(L, init_up_rate)
+     
+     energies, magnetizations = np.zeros(shape=(N,), dtype=np.float64), np.zeros(shape=(N,), dtype=np.float64)
+     for i in range(N):
+          x = np.random.randint(0,L)
+          y = np.random.randint(0,L)
+          
+          s_i = lattice[x, y]
+          flip = [[x,y]]
+          p = 1. - np.exp(-2 / T)
+          
+          f_old = [[x,y]]
+          while len(f_old)>0:
+               f_new = []
+               for x,y in f_old:
+                    nears = [[x-1 if x>0 else L-1,y], [x+1 if L-1>x else 0,y], [x,y-1 if y>0 else L-1], [x,y+1 if L-1>y else 0]]
+                    for near in nears:
+                         if lattice[near[0], near[1]] == s_i and near not in flip:
+                              if np.random.rand() < p:
+                                   f_new.append(near)
+                                   flip.append(near)
+               f_old = f_new
+          
+          for x, y in flip:
                dE = deltaE(lattice, x, y, L)
-               
-               if dE <= 0 or np.exp(-dE/T) > np.random.random():
-                    lattice[x,y] = - s_i
-                    energy += dE * 2
-                    magnetization += -2 * s_i
-               
-               energies[i*L**2 + j] = energy
-               magnetizations[i*L**2 + j] = magnetization
+               lattice[x,y] = -s_i
+               energy += dE
+               magnetization += -2 * s_i
+          
+          energies[i] = energy
+          magnetizations[i] = magnetization
      
      return energies, magnetizations
 
 #초기의 수렴 전 데이터 제거(burn-in) 1-sigma면 수렴 판단
 @numba.njit(nopython=True, nogil=True)
-def burn_in(arr):
-     out = np.where(np.abs(arr - np.mean(arr)) < np.std(arr))[0]
+def burn_in(arr, sigma=1.):
+     out = np.where(np.abs(arr - np.mean(arr)) < sigma * np.std(arr))[0]
      if len(out) ==0:
           out = 0
      else:
@@ -87,8 +122,8 @@ def physics(L, T, energies, magnetizations):
      M = np.mean(np.absolute(magnetizations))
      M2 = np.mean(magnetizations**2)
      M4 = np.mean(magnetizations**4)
-     E = np.mean(energies)/2
-     E2 = np.mean((energies/2)**2)
+     E = np.mean(energies)
+     E2 = np.mean((energies)**2)
      
      data = np.array([
                #M,#M
@@ -103,15 +138,14 @@ def physics(L, T, energies, magnetizations):
 
 #여러 번 얻은 결과 통계
 #@numba.njit(nopython=True, nogil=True)
-def statistics(Temp_range, L_range, sweep, n, sigma, init_up_rate = 0.5):
+def statistics(Temp_range, L_range, N, n, sigma, init_up_rate = 0.5, f=wolff):
      results = []
-     print("READY!!")
      for L in L_range:
           rate = init_up_rate
           for T in Temp_range:
                mean_data = np.zeros(shape=(5,n), dtype=np.float64)
                for j in range(n):
-                    energies, magnetizations = metropolis(L, rate, sweep, T)
+                    energies, magnetizations = f(L, rate, N, T)
                     energies, magnetizations = burn_in(energies), burn_in(magnetizations)
                     mean_data[:,j] = physics(L, T, energies, magnetizations)
                rate = np.mean(mean_data[0])#m
@@ -120,6 +154,7 @@ def statistics(Temp_range, L_range, sweep, n, sigma, init_up_rate = 0.5):
                for data in mean_data:
                     result.extend([np.mean(data), sigma*np.std(data)])
                results.append(result)
+               print(L, T)
      return results
 
 
@@ -145,10 +180,8 @@ def calc_new_values(result):
      return pd.DataFrame(new_data)
 
 #대략적 시간 계산
-def calc_time(T_range, L_range, sweep, n):
-     calc_time = 0
-     for L in L_range:
-          calc_time += round(8.7693834E-08 * len(T_range)*len(L_range)*L**2*sweep*n)
+def calc_time(N, n):
+     calc_time = round(8.7693834E-08 * N * n)
      print(f'약 {str(datetime.timedelta(seconds = calc_time))} 예상')
      print(f'시작: {datetime.datetime.now()}')
      print(f'종료: {str(datetime.datetime.now() + datetime.timedelta(seconds = calc_time))}')
@@ -174,7 +207,7 @@ def read(filename):
      return data
 
 #데이터 보이기
-def show(show, error = True):
+def show(show, error = True, fig = False):
      #show = 'm' #@param ['m', 'e', 'c', 'x', 'u']
      #error = True #@param {type:"boolean"}
 
@@ -197,10 +230,12 @@ def show(show, error = True):
      plt.ylabel(dic[show][2])
      plt.ylim(dic[show][3][0],dic[show][3][1])
      plt.title(show)
+     if fig:
+          plt.savefig('{}.png'.format(dic[show][2]))
      plt.show()
     
-#몬테카를로 시간에 따른 magnetization, energies 보이기
-def plot_magnetization_energy(magnetization, energies):
+#몬테카를로 시간에 따른 energies, magnetization 보이기
+def plot_energy_magnetization(energies, magnetization):
      fig, axes = plt.subplots(1, 2, figsize=(12,4))
      ax = axes[0]
      ax.plot(magnetization)
