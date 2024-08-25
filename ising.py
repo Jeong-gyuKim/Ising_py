@@ -140,14 +140,19 @@ def physics(L, T, energies, magnetizations):
 #@numba.njit(nopython=True, nogil=True)
 def statistics(Temp_range, L_range, N, n, sigma, init_up_rate = 0.5, f=wolff):
      results = []
+     dict_L = {}
      for L in L_range:
           rate = init_up_rate
+          dict_T = {}
           for T in Temp_range:
+               dict_n = {}
                mean_data = np.zeros(shape=(5,n), dtype=np.float64)
                for j in range(n):
                     energies, magnetizations = f(L, rate, N, T)
-                    energies, magnetizations = burn_in(energies), burn_in(magnetizations)
+                    #energies, magnetizations = burn_in(energies), burn_in(magnetizations)
+                    dict_E = hist_dict(energies, magnetizations)
                     mean_data[:,j] = physics(L, T, energies, magnetizations)
+                    dict_n[j]=dict_E
                rate = np.mean(mean_data[0])#m
                rate = (rate + 1) / 2
                result = [L, T]
@@ -155,8 +160,31 @@ def statistics(Temp_range, L_range, N, n, sigma, init_up_rate = 0.5, f=wolff):
                     result.extend([np.mean(data), sigma*np.std(data)])
                results.append(result)
                print(L, T)
+               dict_T[T]=dict_n
+          dict_L[L]=dict_T
+     write(dict_L, "data.pickle")
      return results
 
+def hist_dict(energies, magnetizations):
+     energies, magnetizations = burn_in(energies), burn_in(magnetizations)
+     l = min(len(energies), len(magnetizations))
+     energies, magnetizations = energies[-l:], magnetizations[-l:]
+     
+     dict_E = {}
+     for i, e in enumerate(energies):
+          if dict_E.get(e):
+               dict_E[e] = update_dict(dict_E[e], magnetizations[i])
+          else:
+               dict_E[e] = update_dict([0,0,0,0], magnetizations[i])
+     return dict_E
+               
+def update_dict(li, magnetization):
+     #li=[cnt, M, M2, M4]
+     M, M2, M4 = magnetization, magnetization**2, magnetization**4
+     return [li[0]+1, avg(li[0],li[1],M), avg(li[0],li[2],M2), avg(li[0],li[3],M4)]
+
+def avg(cnt, mean, n):
+     return mean*(cnt/(cnt+1)) + n/(cnt+1)
 
 # 오차 범위 내에 있는지 확인하고 새로운 값을 계산하는 함수
 def calc_new_values(result):
