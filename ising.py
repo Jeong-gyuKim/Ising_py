@@ -46,29 +46,6 @@ def deltaE(lattice, x, y, L):
     dE = 2 * lattice[x, y] * E_i
     return dE
 
-#메트로폴리스 알고리즘 실행
-@numba.njit(nopython=True, nogil=True)
-def metropolis(L, init_up_rate, N, T):
-     lattice, magnetization, energy = set_init_state(L, init_up_rate)
-     
-     energies, magnetizations = np.zeros(shape=(N,), dtype=np.float64), np.zeros(shape=(N,), dtype=np.float64)
-     for i in range(N):
-          x = np.random.randint(0,L)
-          y = np.random.randint(0,L)
-          
-          s_i = lattice[x, y]
-          dE = deltaE(lattice, x, y, L)
-          
-          if dE <= 0 or np.exp(-dE/T) > np.random.random():
-               lattice[x,y] = - s_i
-               energy += dE
-               magnetization += -2 * s_i
-          
-          energies[i] = energy
-          magnetizations[i] = magnetization
-     
-     return energies, magnetizations
-
 #울프 알고리즘 실행
 @numba.njit(nopython=True, nogil=True)
 def wolff(L, init_up_rate, N, T):
@@ -116,54 +93,27 @@ def burn_in(arr, sigma=1.):
           out = out[0]
      return arr[out:]
 
-#magnetizations, energies로 물리적 의미 찾기
-@numba.njit(nopython=True, nogil=True)
-def physics(L, T, energies, magnetizations):
-     M = np.mean(np.absolute(magnetizations))
-     M2 = np.mean(magnetizations**2)
-     M4 = np.mean(magnetizations**4)
-     E = np.mean(energies)
-     E2 = np.mean((energies)**2)
-     
-     data = np.array([
-               #M,#M
-               M / L**2,#m
-               #E,#E
-               E / L**2,#e
-               (M2 - M**2) / T / (L**2),#x
-               (E2 - E**2) / (T**2) / (L**2),#c
-               1 - (M4/(3*M2**2)) if M2!=0 else 0,#u
-          ])
-     return data
-
 #여러 번 얻은 결과 통계
 #@numba.njit(nopython=True, nogil=True)
-def statistics(Temp_range, L_range, N, n, sigma, init_up_rate = 0.5, f=wolff):
-     results = []
-     dict_L = {}
+def statistics(Temp_range, L_range, N, n, init_up_rate = 0.5, f=wolff):
+     dict_L = {}#
      for L in L_range:
           rate = init_up_rate
-          dict_T = {}
+          dict_T = {}#
           for T in Temp_range:
-               dict_n = {}
-               mean_data = np.zeros(shape=(5,n), dtype=np.float64)
+               dict_n = {}#
+               magnetizations_data = np.zeros(n, dtype=np.float64)
                for j in range(n):
                     energies, magnetizations = f(L, rate, N, T)
-                    #energies, magnetizations = burn_in(energies), burn_in(magnetizations)
-                    dict_E = hist_dict(energies, magnetizations)
-                    mean_data[:,j] = physics(L, T, energies, magnetizations)
+                    dict_E = hist_dict(energies, magnetizations)#
+                    magnetizations_data[j] = np.mean(np.absolute(magnetizations))/L**2
                     dict_n[j]=dict_E
-               rate = np.mean(mean_data[0])#m
+               rate = np.mean(magnetizations_data)
                rate = (rate + 1) / 2
-               result = [L, T]
-               for data in mean_data:
-                    result.extend([np.mean(data), sigma*np.std(data)])
-               results.append(result)
                print(L, T)
                dict_T[T]=dict_n
           dict_L[L]=dict_T
-     write(dict_L, "data.pickle")
-     return results
+     return dict_L
 
 def hist_dict(energies, magnetizations):
      energies, magnetizations = burn_in(energies), burn_in(magnetizations)
@@ -179,49 +129,11 @@ def hist_dict(energies, magnetizations):
      return dict_E
                
 def update_dict(li, magnetization):
-     #li=[cnt, M, M2, M4]
      M, M2, M4 = magnetization, magnetization**2, magnetization**4
      return [li[0]+1, avg(li[0],li[1],M), avg(li[0],li[2],M2), avg(li[0],li[3],M4)]
 
 def avg(cnt, mean, n):
      return mean*(cnt/(cnt+1)) + n/(cnt+1)
-
-# 오차 범위 내에 있는지 확인하고 새로운 값을 계산하는 함수
-def calc_new_values(result):
-     df = pd.DataFrame(result, columns=['L', 'Temp', 'm', 'sm', 'e', 'se', 'x', 'sx', 'c', 'sc', 'u', 'su'])
-     grouped = df.groupby(['L', 'Temp'])
-     new_data = []
-
-     for name, group in grouped:
-          new_row = {'L': name[0], 'Temp': name[1]}
-          for col in ['m', 'e', 'x', 'c', 'u']:
-               q1, q2 = group[col].values
-               sq1, sq2 = group['s' + col].values
-               if abs(q1 - q2) <= max(sq1, sq2):
-                    new_row[col] = np.mean([q1, q2])
-                    new_row['s' + col] = max(sq1, sq2)
-               else:
-                    new_row[col] = np.nan
-                    new_row['s' + col] = np.nan
-          new_data.append(new_row)
-
-     return pd.DataFrame(new_data)
-
-#대략적 시간 계산
-def calc_time(N, n):
-     calc_time = round(8.7693834E-08 * N * n)
-     print(f'약 {str(datetime.timedelta(seconds = calc_time))} 예상')
-     print(f'시작: {datetime.datetime.now()}')
-     print(f'종료: {str(datetime.datetime.now() + datetime.timedelta(seconds = calc_time))}')
-     
-#데이터 저장
-def save(result, pth='', filename='result.csv'):
-     print(f'종료: {datetime.datetime.now()}')
-     df = pd.DataFrame(result, columns=['L', 'Temp', 'm', 'sm', 'e', 'se', 'x', 'sx', 'c', 'sc', 'u', 'su'])
-     if pth:
-          df.to_csv(pth+"/"+filename, index=False, encoding='utf-8', header=['L', 'Temp', 'm', 'sm', 'e', 'se', 'x', 'sx', 'c', 'sc', 'u', 'su'])
-     else:
-          df.to_csv(filename, index=False, encoding='utf-8', header=['L', 'Temp', 'm', 'sm', 'e', 'se', 'x', 'sx', 'c', 'sc', 'u', 'su'])
 
 #피클 쓰기         
 def write(data, filename):
@@ -233,52 +145,3 @@ def read(filename):
      with open(filename,'rb') as fr:
           data = pickle.load(fr)
      return data
-
-#데이터 보이기
-def show(show, error = True, fig = False):
-     #show = 'm' #@param ['m', 'e', 'c', 'x', 'u']
-     #error = True #@param {type:"boolean"}
-
-     dic = {'m': ['m','sm','Magnetization per spin', [-0.1,1.1]],
-          'e': ['e','se','Energy per spin', [-2.1,0.1]],
-          'c': ['c','sc', 'Specific heat per spin', [-0.1,2.1]],
-          'x': ['x','sx', 'Magnetic susceptibility', [-0.1,4.1]],
-          'u': ['u','su','Binder cumulant', [-0.1,0.77]]}
-
-     df = pd.read_csv('result.csv')
-     for i in sorted(set(df['L'])):
-          df1 = df[df['L']==i].sort_values(by='Temp').dropna(axis=0)
-          if error:
-               #plt.errorbar(df1['Temp'], df1[dic[show][0]], yerr=df1[dic[show][1]], label=f'L={i}', capsize=4)
-               
-               plt.errorbar(df1['Temp'], df1[dic[show][0]], yerr=df1[dic[show][1]], alpha=.75, fmt=':', capsize=3, capthick=1, label=f'L={i}')
-               plt.fill_between(df1['Temp'], df1[dic[show][0]] - df1[dic[show][1]], df1[dic[show][0]] + df1[dic[show][1]], alpha=.25)
-          else:
-               plt.plot(df1['Temp'], df1[dic[show][0]], label=f'L={i}')
-     plt.legend()
-     plt.xlabel('Temperature')
-     plt.ylabel(dic[show][2])
-     plt.ylim(dic[show][3][0],dic[show][3][1])
-     plt.title(show)
-     if fig:
-          plt.savefig('{}.png'.format(dic[show][2]))
-     plt.show()
-    
-#몬테카를로 시간에 따른 energies, magnetization 보이기
-def plot_energy_magnetization(energies, magnetization):
-     fig, axes = plt.subplots(1, 2, figsize=(12,4))
-     ax = axes[0]
-     ax.plot(magnetization)
-     ax.set_xlabel('Algorithm Time Steps')
-     ax.set_ylabel(r'Average Magnetization $\bar{m}$')
-     ax.set_ylim(-1.1,1.1)
-     ax.grid()
-     ax = axes[1]
-     ax.plot(energies)
-     ax.set_xlabel('Algorithm Time Steps')
-     ax.set_ylabel(r'Energy $E$')
-     ax.set_ylim(-2.1,2.1)
-     ax.grid()
-     fig.tight_layout()
-     fig.suptitle(r'Evolution of Average Magnetization and Energy', y=1.07, size=18)
-     plt.show()
