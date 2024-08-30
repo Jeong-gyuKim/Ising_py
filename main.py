@@ -1,4 +1,4 @@
-from ising import statistics, write
+from ising import compute_statistics, write_to_file
 import numpy as np
 #Tc = 2/np.log(1+np.sqrt(2))
 
@@ -7,12 +7,11 @@ init_L = 4#@param{type:"integer"}
 final_L = 13#@param{type:"integer"}
 step_L = 2#@param{type:"integer"}
 
-init_Temp = 0.1#@param{type:"number"}
+init_Temp = 1#@param{type:"number"}
 final_Temp = 3#@param{type:"number"}
 step_Temp = 0.1#@param{type:"number"}
 
-N = 1000#@param{type:"integer"}
-n = 10#@param{type:"integer"}
+N = 10000#@param{type:"integer"}
 
 ########
 T_range = np.round(np.arange(init_Temp,final_Temp,step_Temp),3)
@@ -23,8 +22,7 @@ L_range = np.arange(init_L,final_L,step_L)
 ########
 print("격자 크기:", init_L,final_L,step_L,
       "\n온도:", init_Temp,final_Temp,step_Temp,
-      "\nN:",N,
-      "\nn번 평균:", n)
+      "\nN:",N)
 
-result = statistics(T_range, L_range, N, n)#계산
-write(result, 'data.pickle')
+result = compute_statistics(T_range, L_range, N)#계산
+write_to_file(result, 'data.pickle')
