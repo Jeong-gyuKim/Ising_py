@@ -162,18 +162,19 @@ def get_Z(data, L):
 
     for _ in range(50):  # Maximum of 50 iterations for convergence
         for D in range(size_d):
+            Z2[D] = 0
             for i in range(size_d):
                 for k in range(size_e[i]):
                     sZ = 0.
                     for j in range(size_d):
                         sZ += np.exp((1. / T1[D] - 1. / T1[j]) * energy[i][k]) / Z1[j]
                     Z2[D] += hist_E[i][k] / sZ
-
-        tZ = np.sum(Z2)
+        
+        tot_Z = np.sum(Z2)
         diff = 0.
         for D in range(size_d):
-            Z2[D] /= tZ
-            diff += abs(Z1[D] - Z2[D])
+            Z2[D] /= tot_Z
+            diff += abs(Z2[D] - Z1[D])
             Z1[D] = Z2[D]
         
         if diff < 0.0001:  # Convergence criterion
@@ -188,7 +189,8 @@ def get_avg(data, L, T, Z1):
     Nsite = L**2
 
     # Initialize sums
-    s_e = s_e2 = s_m = s_m2 = s_m4 = s_me = s_m2e = s_m4e = tZ = 0
+    s_e = s_e2 = s_m = s_m2 = s_m4 = s_me = s_m2e = s_m4e = tZ = 0.
+    maxZ = 0#(2 * L**2 * max([1. / T - 1. / t for t in T1]))
 
     for D in range(size_d):
         for i in range(size_e[D]):
@@ -196,7 +198,11 @@ def get_avg(data, L, T, Z1):
             m1 = hist_M[D][i] / Nsite
             m2 = hist_M2[D][i] / Nsite**2
             m4 = hist_M4[D][i] / Nsite**4
-            Z = Z1[D] * hist_E[D][i] * np.exp(-energy[D][i] * (1. / T - 1. / T1[D]))
+            
+            Z = (-energy[D][i] * (1. / T - 1. / T1[D]))
+            Z = Z - maxZ#숫자 큼 보정
+            Z = np.exp(Z)
+            Z = Z1[D] * hist_E[D][i] * Z
             
             s_e += e1 * Z
             s_e2 += e1 * e1 * Z
@@ -252,3 +258,45 @@ def dbinder_dbeta(data, L, T, Z1):
     s_e, _, _, s_m2, s_m4, _, s_m2e, s_m4e = get_avg(data, L, T, Z1)
     return (Nsite * (s_m2 * (s_m4e + s_m4 * s_e) - 2.0 * s_m4 * s_m2e) /
             (3.0 * s_m2 * s_m2 * s_m2))
+
+def LinearRegression(x,y):
+    x, y = np.array(x), np.array(y)
+    a = sum((x-np.mean(x))*(y-np.mean(y)))/sum((x-np.mean(x))**2)
+    b = np.mean(y) - a * np.mean(x)
+    return a, b
+
+def NU(data, T1):
+    L_range = list(data.keys())
+    
+    Max_dm_dbeta = []
+    for L in L_range:
+        Z1 = get_Z(data, L)
+        Q = max([dm_dbeta(data, L, T, Z1) for T in T1])
+        Max_dm_dbeta.append(Q)
+    
+    nu, _ = LinearRegression(np.log10(L_range), np.log10(Max_dm_dbeta))
+    return 1 / nu
+
+def GAMMA(data, T1, nu):
+    L_range = list(data.keys())
+    
+    Max_chi = []
+    for L in L_range:
+        Z1 = get_Z(data, L)
+        Q = max([chi(data, L, T, Z1) for T in T1])
+        Max_chi.append(Q)
+    
+    gamma, _ = LinearRegression(np.log10(L_range), np.log10(Max_chi))
+    return gamma * nu
+
+def ALPHA(data, T1, nu):
+    L_range = list(data.keys())
+    
+    Max_Cv = []
+    for L in L_range:
+        Z1 = get_Z(data, L)
+        Q = max([Cv(data, L, T, Z1) for T in T1])
+        Max_Cv.append(Q)
+    
+    alpha, _ = LinearRegression(np.log10(L_range), np.log10(Max_Cv))
+    return alpha * nu

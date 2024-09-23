@@ -3,9 +3,9 @@ import numpy as np
 #Tc = 2/np.log(1+np.sqrt(2))
 
 ####상태 입력####
-init_L = 4#@param{type:"integer"}
-final_L = 13#@param{type:"integer"}
-step_L = 2#@param{type:"integer"}
+init_L = 10#@param{type:"integer"}
+final_L = 20#@param{type:"integer"}
+step_L = 1#@param{type:"integer"}
 
 init_Temp = 1#@param{type:"number"}
 final_Temp = 3#@param{type:"number"}
