@@ -7,7 +7,7 @@ DT = 0.05
 tol_T = 0.0000001
 tol_Z1 = 0.0001
 
-MAX_D = 5
+MAX_D = 200#5
 MAX_E = 100000
 
 #/* histogram method */
@@ -30,7 +30,7 @@ def read_hist():
     T0 = 0.0
     D = 0
     for D0 in range(20):
-        dum2 = "hist{}.in".format(D0)
+        dum2 = "data/hist{}.in".format(D0)
         try:
             with open(dum2,"r") as histfile:
                 if D >= MAX_D:
@@ -38,8 +38,9 @@ def read_hist():
                     return -1
                 print("#Reading file {}".format(dum2))
                 
-                dum, tmp1, dum2, Nsite = histfile.readline().split()
-                T1[D] = tmp1
+                dum, tmp1, dum2, tmp2 = histfile.readline().split(',')
+                T1[D] = float(tmp1)
+                Nsite = int(tmp2)
                 T0 += T1[D]
                 dum = histfile.readline()
                 
@@ -47,12 +48,12 @@ def read_hist():
                 
                 for i in range(MAX_E):
                     try:
-                        tmp1, tmp2, tmp3, tmp4, tmp5 = histfile.readline().split()
-                        energy[D][i] = tmp1
-                        hist_E[D][i] = tmp2
-                        hist_M[D][i] = tmp3
-                        hist_M2[D][i] = tmp4
-                        hist_M4[D][i] = tmp5
+                        tmp1, tmp2, tmp3, tmp4, tmp5 = histfile.readline().split(',')
+                        energy[D][i] = float(tmp1)
+                        hist_E[D][i] = float(tmp2)
+                        hist_M[D][i] = float(tmp3)
+                        hist_M2[D][i] = float(tmp4)
+                        hist_M4[D][i] = float(tmp5)
                         
                     except:
                         break
@@ -99,7 +100,7 @@ def get_Z1():
             break
     print("After {} iteration, Z_i is obtained.".format(iter))
     for D in range(SIZE_D):
-        print(Z1[D],end=" ")
+        print("{:.8e}".format(Z1[D]),end=" ")
     print()
 
 def get_avg(T):
