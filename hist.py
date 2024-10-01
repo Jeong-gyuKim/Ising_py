@@ -1,9 +1,10 @@
 import numpy as np
+import numba
 
-DT_scan = 1.0
+DT_scan = 2#1.0
 dT_scan = 0.001
 
-DT = 0.05
+DT = 2#0.05
 tol_T = 0.0000001
 tol_Z1 = 0.0001
 
@@ -29,7 +30,7 @@ def read_hist():
     global SIZE_D, T0, Nsite
     T0 = 0.0
     D = 0
-    for D0 in range(20):
+    for D0 in range(4):
         dum2 = "data/hist{}.csv".format(D0)
         try:
             with open(dum2,"r") as histfile:
@@ -107,6 +108,29 @@ def get_avg(T):
     s_e = s_e2 = s_m = s_m2 = s_m4 = s_me = s_m2e = s_m4e = Z = 0.
     for D in range(SIZE_D):
         for i in range(SIZE_E[D]):
+            Z_1   = np.log(Z1[D] * hist_E[D][i]) + (-energy[D][i]*(1./T-1./T1[D]))
+            Z += np.log(1 + np.exp(Z_1 - Z))
+        #Z += np.log(1 - np.exp(-Z))
+    for D in range(SIZE_D):
+        for i in range(SIZE_E[D]):
+            e_1   = energy[D][i]/np.double(Nsite)
+            m_1   = hist_M[D][i]
+            m_2   = hist_M2[D][i]
+            m_4   = hist_M4[D][i]
+            Z_1   = Z1[D] * hist_E[D][i] * np.exp(-energy[D][i]*(1./T-1./T1[D]) - Z)
+            
+            s_e  += e_1 * Z_1 
+            s_e2 += (e_1*e_1) * Z_1 
+            s_m  += m_1 * Z_1 
+            s_m2 += m_2 * Z_1 
+            s_m4 += m_4 * Z_1 
+            s_me += (m_1*e_1) * Z_1 
+            s_m2e += (m_2*e_1) * Z_1 
+            s_m4e += (m_4*e_1) * Z_1 
+    """
+    s_e = s_e2 = s_m = s_m2 = s_m4 = s_me = s_m2e = s_m4e = Z = 0.
+    for D in range(SIZE_D):
+        for i in range(SIZE_E[D]):
             e_1   = energy[D][i]/np.double(Nsite)
             m_1   = hist_M[D][i]
             m_2   = hist_M2[D][i]
@@ -132,7 +156,7 @@ def get_avg(T):
     s_me  = s_me/Z
     s_m2e = s_m2e/Z
     s_m4e = s_m4e/Z
-    
+    """
     return s_e, s_e2, s_m, s_m2, s_m4, s_me, s_m2e, s_m4e
 
 def Cv(T):
@@ -203,6 +227,6 @@ def main():
     T_dbinder_dbeta_max, dbinder_dbeta_max  = golden(T0-DT,T0,T0+DT,dbinder_dbeta,tol_T)
 
     print("T_chi_max\tT_Cv_max\tT_dm_dbeta_max\tT_dbinder_dbeta_max\tchi_max\t\tCv_max\t\tdm_dbeta_max\tdbinder_dbeta_max ")
-    print("{:11.8f}\t{:11.8f}\t{:11.8f}\t{:11.8f}\t\t{:11.8f}\t{:11.8f}\t{:11.8f}\t{:11.8f}".format(T_chi_max, T_Cv_max, T_dm_dbeta_max, T_dbinder_dbeta_max,chi_max,Cv_max,dm_dbeta_max,dbinder_dbeta_max))
+    print("{:11.8e}\t{:11.8e}\t{:11.8e}\t{:11.8e}\t\t{:11.8e}\t{:11.8e}\t{:11.8e}\t{:11.8e}".format(T_chi_max, T_Cv_max, T_dm_dbeta_max, T_dbinder_dbeta_max,chi_max,Cv_max,dm_dbeta_max,dbinder_dbeta_max))
 
 main()

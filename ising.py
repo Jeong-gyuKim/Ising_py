@@ -1,6 +1,5 @@
 import numpy as np
 import numba
-import pickle
 
 # Initialize the lattice with spins based on initial up rate
 @numba.njit(nopython=True, nogil=True)
@@ -97,19 +96,19 @@ def burn_in(data: np.ndarray, sigma: float = 1.0) -> np.ndarray:
 
 # Compute statistics across multiple simulations
 def compute_statistics(temp_range: np.ndarray, L_range: np.ndarray, N: int, init_up_rate: float = 0.5, simulation_func=wolff_algorithm) -> dict:
-    data = {}
+    D = 0
     for L in L_range:
-        D = []
         for T in temp_range:
             energies, magnetizations = simulation_func(L, init_up_rate, N, T)
             energy, hist_E, hist_M, hist_M2, hist_M4 = compute_histogram(energies, magnetizations)
-            print(L, T)
-            D.append([T, energy, hist_E, hist_M, hist_M2, hist_M4])
-        
-        # Use lists instead of arrays for data consistency
-        data[L] = [list(x) for x in zip(*D)]
-        
-    return data
+            
+            with open("data/hist{}.csv".format(D), "w") as out:
+                out.writelines("T,{},Nsite,{}\nenergy,hist_E,hist_M,hist_M2,hist_M4\n".format(T, L**2))
+                for i in range(len(energy)):
+                    out.writelines("{},{:11.8e},{:11.8e},{:11.8e},{:11.8e}\n".format(energy[i], hist_E[i], hist_M[i], hist_M2[i], hist_M4[i]))
+            D += 1
+    return 0
+
 
 def compute_histogram(energies: np.ndarray, magnetizations: np.ndarray) -> tuple:
     energies, magnetizations = burn_in(energies), burn_in(magnetizations)
@@ -119,184 +118,20 @@ def compute_histogram(energies: np.ndarray, magnetizations: np.ndarray) -> tuple
     histogram = {}
     for e, m in zip(energies, magnetizations):
         if e in histogram:
-            histogram[e] = update_histogram(histogram[e], m)
+            histogram[e] = histogram[e] + [m]
         else:
-            histogram[e] = update_histogram([0, 0, 0, 0], m)
+            histogram[e] = [m]
+    histogram = dict(sorted(histogram.items()))
 
     energy_levels = list(histogram.keys())
-    histograms = list(histogram.values())
-    hist_E, hist_M, hist_M2, hist_M4 = [np.array(x) for x in zip(*histograms)]
-
+    hist_E, hist_M, hist_M2, hist_M4 = np.zeros_like(energy_levels), np.zeros_like(energy_levels), np.zeros_like(energy_levels), np.zeros_like(energy_levels)
+    for i in range(len(energy_levels)):
+        Ms = np.array(histogram[energy_levels[i]])
+        hist_E[i], hist_M[i], hist_M2[i], hist_M4[i] = len(Ms), np.mean(Ms), np.mean(Ms**2), np.mean(Ms**4)
     return energy_levels, hist_E, hist_M, hist_M2, hist_M4
-
-def update_histogram(current_hist: list, magnetization: float) -> list:
-    M, M2, M4 = magnetization, magnetization**2, magnetization**4
-    return [
-        current_hist[0] + 1, 
-        compute_average(current_hist[0], current_hist[1], M), 
-        compute_average(current_hist[0], current_hist[2], M2), 
-        compute_average(current_hist[0], current_hist[3], M4)
-    ]
-
-
-def compute_average(count: int, current_mean: float, new_value: float) -> float:
-     return current_mean*(count/(count+1)) + new_value/(count+1)
-
-# Serialize data to a file using pickle
-def write_to_file(data: dict, filename: str) -> None:
-    with open(filename, 'wb') as fw:
-        pickle.dump(data, fw)
-
-# Deserialize data from a file using pickle
-def read_from_file(filename: str) -> dict:
-    with open(filename, 'rb') as fr:
-        return pickle.load(fr)
-
-def get_Z(data, L):
-    T1, energy, hist_E, _, _, _ = data[L]
-    size_d = len(T1)
-    size_e = np.array([len(e) for e in energy])
-    
-    Z1 = np.ones(size_d)
-    Z2 = np.zeros(size_d)
-
-    for _ in range(50):  # Maximum of 50 iterations for convergence
-        for D in range(size_d):
-            Z2[D] = 0
-            for i in range(size_d):
-                for k in range(size_e[i]):
-                    sZ = 0.
-                    for j in range(size_d):
-                        sZ += np.exp((1. / T1[D] - 1. / T1[j]) * energy[i][k]) / Z1[j]
-                    Z2[D] += hist_E[i][k] / sZ
-        
-        tot_Z = np.sum(Z2)
-        diff = 0.
-        for D in range(size_d):
-            Z2[D] /= tot_Z
-            diff += abs(Z2[D] - Z1[D])
-            Z1[D] = Z2[D]
-        
-        if diff < 0.0001:  # Convergence criterion
-            break
-            
-    return Z1
-
-def get_avg(data, L, T, Z1):
-    T1, energy, hist_E, hist_M, hist_M2, hist_M4 = data[L]
-    size_d = len(T1)
-    size_e = np.array([len(e) for e in energy])
-    Nsite = L**2
-
-    # Initialize sums
-    s_e = s_e2 = s_m = s_m2 = s_m4 = s_me = s_m2e = s_m4e = tZ = 0.
-    maxZ = 0#(2 * L**2 * max([1. / T - 1. / t for t in T1]))
-
-    for D in range(size_d):
-        for i in range(size_e[D]):
-            e1 = energy[D][i] / Nsite
-            m1 = hist_M[D][i] / Nsite
-            m2 = hist_M2[D][i] / Nsite**2
-            m4 = hist_M4[D][i] / Nsite**4
-            
-            Z = (-energy[D][i] * (1. / T - 1. / T1[D]))
-            Z = Z - maxZ#숫자 큼 보정
-            Z = np.exp(Z)
-            Z = Z1[D] * hist_E[D][i] * Z
-            
-            s_e += e1 * Z
-            s_e2 += e1 * e1 * Z
-            s_m += m1 * Z
-            s_m2 += m2 * Z
-            s_m4 += m4 * Z
-            s_me += m1 * e1 * Z
-            s_m2e += m2 * e1 * Z
-            s_m4e += m4 * e1 * Z
-            tZ += Z
-
-    # Normalize by partition function
-    s_e /= tZ
-    s_e2 /= tZ
-    s_m /= tZ
-    s_m2 /= tZ
-    s_m4 /= tZ
-    s_me /= tZ
-    s_m2e /= tZ
-    s_m4e /= tZ
-
-    return s_e, s_e2, s_m, s_m2, s_m4, s_me, s_m2e, s_m4e
-
-def E(data, L, T, Z1):
-    s_e, _, _, _, _, _, _, _ = get_avg(data, L, T, Z1)
-    return s_e
-
-def M(data, L, T, Z1):
-    _, _, s_m, _, _, _, _, _ = get_avg(data, L, T, Z1)
-    return s_m
-
-def Cv(data, L, T, Z1):
-    Nsite = L**2
-    s_e, s_e2, _, _, _, _, _, _ = get_avg(data, L, T, Z1)
-    return Nsite * (s_e2 - s_e * s_e) / (T * T)
-
-def chi(data, L, T, Z1):
-    Nsite = L**2
-    _, _, s_m, s_m2, _, _, _, _ = get_avg(data, L, T, Z1)
-    return Nsite * (s_m2 - s_m * s_m) / T
-
-def dm_dbeta(data, L, T, Z1):
-    Nsite = L**2
-    s_e, _, s_m, _, _, s_me, _, _ = get_avg(data, L, T, Z1)
-    return Nsite * (s_m * s_e - s_me)
-
-def binder(data, L, T, Z1):
-    _, _, _, s_m2, s_m4, _, _, _ = get_avg(data, L, T, Z1)
-    return 1.0 - s_m4 / (s_m2 * s_m2 * 3.0)
-
-def dbinder_dbeta(data, L, T, Z1):
-    Nsite = L**2
-    s_e, _, _, s_m2, s_m4, _, s_m2e, s_m4e = get_avg(data, L, T, Z1)
-    return (Nsite * (s_m2 * (s_m4e + s_m4 * s_e) - 2.0 * s_m4 * s_m2e) /
-            (3.0 * s_m2 * s_m2 * s_m2))
 
 def LinearRegression(x,y):
     x, y = np.array(x), np.array(y)
     a = sum((x-np.mean(x))*(y-np.mean(y)))/sum((x-np.mean(x))**2)
     b = np.mean(y) - a * np.mean(x)
     return a, b
-
-def NU(data, T1):
-    L_range = list(data.keys())
-    
-    Max_dm_dbeta = []
-    for L in L_range:
-        Z1 = get_Z(data, L)
-        Q = max([dm_dbeta(data, L, T, Z1) for T in T1])
-        Max_dm_dbeta.append(Q)
-    
-    nu, _ = LinearRegression(np.log10(L_range), np.log10(Max_dm_dbeta))
-    return 1 / nu
-
-def GAMMA(data, T1, nu):
-    L_range = list(data.keys())
-    
-    Max_chi = []
-    for L in L_range:
-        Z1 = get_Z(data, L)
-        Q = max([chi(data, L, T, Z1) for T in T1])
-        Max_chi.append(Q)
-    
-    gamma, _ = LinearRegression(np.log10(L_range), np.log10(Max_chi))
-    return gamma * nu
-
-def ALPHA(data, T1, nu):
-    L_range = list(data.keys())
-    
-    Max_Cv = []
-    for L in L_range:
-        Z1 = get_Z(data, L)
-        Q = max([Cv(data, L, T, Z1) for T in T1])
-        Max_Cv.append(Q)
-    
-    alpha, _ = LinearRegression(np.log10(L_range), np.log10(Max_Cv))
-    return alpha * nu
