@@ -30,7 +30,7 @@ def read_hist():
     T0 = 0.0
     D = 0
     for D0 in range(20):
-        dum2 = "data/hist{}.in".format(D0)
+        dum2 = "data/hist{}.csv".format(D0)
         try:
             with open(dum2,"r") as histfile:
                 if D >= MAX_D:
@@ -159,12 +159,12 @@ def dbinder_dbeta(T):
    return np.double(Nsite)*(s_m2*(s_m4e+s_m4*s_e) - 2.0*s_m4*s_m2e)/(3.0*s_m2*s_m2*s_m2)
 
 def scan_T():
-    with open("hist.out", "w") as out:
-        out.writelines("#T         m           chi         E         Cv     dm/dbeta binder    dbinder/dbeta\n")
+    with open("hist.csv", "w") as out:
+        out.writelines("T,m,chi,E,Cv,dm/dbeta,binder,dbinder/dbeta\n")
         
         for T in np.arange(T0-DT_scan,T0+DT_scan,dT_scan):
             s_e, s_e2, s_m, s_m2, s_m4, s_me, s_m2e, s_m4e = get_avg(T)
-            out.writelines("{} {} {} {} {} {} {} {}\n".format(T, s_m, np.double(Nsite)*(s_m2-s_m*s_m)/(T), s_e, np.double(Nsite)*(s_e2-s_e*s_e)/(T*T), np.double(Nsite)*(s_m*s_e - s_me), 1.0 - s_m4/(s_m2*s_m2*3.0), np.double(Nsite)*(s_m2*(s_m4e+s_m4*s_e) - 2.0*s_m4*s_m2e)/(3.0*s_m2*s_m2*s_m2) ))
+            out.writelines("{:.3f},{:11.8e},{:11.8e},{:11.8e},{:11.8e},{:11.8e},{:11.8e},{:11.8e}\n".format(T, s_m/Nsite, np.double(Nsite)*(s_m2-s_m*s_m)/(T), s_e, np.double(Nsite)*(s_e2-s_e*s_e)/(T*T), np.double(Nsite)*(s_m*s_e - s_me), 1.0 - s_m4/(s_m2*s_m2*3.0), np.double(Nsite)*(s_m2*(s_m4e+s_m4*s_e) - 2.0*s_m4*s_m2e)/(3.0*s_m2*s_m2*s_m2) ))
     
 def golden(ax, bx, cx, f, tol):
     R = 0.61803399
