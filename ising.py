@@ -99,7 +99,9 @@ def compute_statistics(temp_range: np.ndarray, L_range: np.ndarray, N: int, init
     D = 0
     for L in L_range:
         for T in temp_range:
+            print("#Writing file data/hist{}.csv".format(D))
             energies, magnetizations = simulation_func(L, init_up_rate, N, T)
+            print("#T1 = {}  Nsite = {}".format(T,L**2))
             energy, hist_E, hist_M, hist_M2, hist_M4 = compute_histogram(energies, magnetizations)
             
             with open("data/hist{}.csv".format(D), "w") as out:

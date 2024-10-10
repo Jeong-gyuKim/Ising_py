@@ -4,12 +4,12 @@ import numpy as np
 #Tc = 2/np.log(1+np.sqrt(2))
 
 ####상태 입력####
-init_L, final_L, step_L = 5, 20, 5
-T0, DT_scan, dT_scan = 2.7, 1.0, 0.1
+init_L, final_L, step_L = 20,100,100000
+T0, DT_scan, dT_scan = 2.7, 1.0, 0.5
 N = 10**6
 
 ########
-T_range = np.round(np.arange(T0-DT_scan,T0+DT_scan,dT_scan),3)
+T_range = np.round(np.arange(T0-DT_scan,T0+DT_scan+dT_scan,dT_scan),3)
 L_range = np.arange(init_L,final_L,step_L)
 
 ########
@@ -19,4 +19,4 @@ print("격자 크기:", init_L,final_L,step_L,
       "\n",T_range,
       "\nN:",N)
 
-result = compute_statistics(T_range, L_range, N)
+result = compute_statistics(T_range, L_range, N, init_up_rate = 0)

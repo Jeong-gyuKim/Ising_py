@@ -1,14 +1,14 @@
 import numpy as np
 import numba
 
-DT_scan = 2#1.0
-dT_scan = 0.001
+DT_scan = 2.0#1.0
+dT_scan = 1e-3#0.001
 
-DT = 2#0.05
-tol_T = 0.0000001
-tol_Z1 = 0.0001
+DT = DT_scan#0.05
+tol_T = 1e-7#0.0000001
+tol_Z1 = 1e-4#0.0001
 
-MAX_D = 200#5
+MAX_D = 100#5
 MAX_E = 100000
 
 #/* histogram method */
@@ -30,7 +30,7 @@ def read_hist():
     global SIZE_D, T0, Nsite
     T0 = 0.0
     D = 0
-    for D0 in range(4):
+    for D0 in range(20):
         dum2 = "data/hist{}.csv".format(D0)
         try:
             with open(dum2,"r") as histfile:
@@ -109,8 +109,10 @@ def get_avg(T):
     for D in range(SIZE_D):
         for i in range(SIZE_E[D]):
             Z_1   = np.log(Z1[D] * hist_E[D][i]) + (-energy[D][i]*(1./T-1./T1[D]))
-            Z += np.log(1 + np.exp(Z_1 - Z))
-        #Z += np.log(1 - np.exp(-Z))
+            if Z == 0:
+                Z = Z_1
+            else:
+                Z += np.log(1 + np.exp(Z_1 - Z))
     for D in range(SIZE_D):
         for i in range(SIZE_E[D]):
             e_1   = energy[D][i]/np.double(Nsite)
