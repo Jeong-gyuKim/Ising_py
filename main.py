@@ -4,9 +4,9 @@ import numpy as np
 #Tc = 2/np.log(1+np.sqrt(2))
 
 ####상태 입력####
-init_L, final_L, step_L = 20,100,100000
+init_L, final_L, step_L = 2,11,1
 T0, DT_scan, dT_scan = 2.7, 1.0, 0.5
-N = 10**6
+N = 10**3
 
 ########
 T_range = np.round(np.arange(T0-DT_scan,T0+DT_scan+dT_scan,dT_scan),3)

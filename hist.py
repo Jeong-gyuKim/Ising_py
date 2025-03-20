@@ -1,7 +1,7 @@
 import numpy as np
 import numba
 
-DT_scan = 2.0#1.0
+DT_scan = 1.0#1.0
 dT_scan = 1e-3#0.001
 
 DT = DT_scan#0.05
@@ -30,8 +30,8 @@ def read_hist():
     global SIZE_D, T0, Nsite
     T0 = 0.0
     D = 0
-    for D0 in range(20):
-        dum2 = "data/hist{}.csv".format(D0)
+    for D0 in range(5):
+        dum2 = "data/hist{}.csv".format(D0+5*1)
         try:
             with open(dum2,"r") as histfile:
                 if D >= MAX_D:
@@ -72,6 +72,11 @@ def read_hist():
         return -1
     T0 = T0 / SIZE_D
     
+    T0 = 5
+    global DT_scan, DT
+    DT_scan = DT = 4.9
+    
+    
 def get_Z1():
     Z2 = np.zeros(MAX_D,dtype=np.double)
     
@@ -104,6 +109,7 @@ def get_Z1():
         print("{:.8e}".format(Z1[D]),end=" ")
     print()
 
+@numba.njit(nopython=True, nogil=True)
 def get_avg(T):
     s_e = s_e2 = s_m = s_m2 = s_m4 = s_me = s_m2e = s_m4e = Z = 0.
     for D in range(SIZE_D):
@@ -161,27 +167,29 @@ def get_avg(T):
     """
     return s_e, s_e2, s_m, s_m2, s_m4, s_me, s_m2e, s_m4e
 
+@numba.njit(nopython=True, nogil=True)
 def Cv(T):
     s_e, s_e2, s_m, s_m2, s_m4, s_me, s_m2e, s_m4e = get_avg(T)
     return np.double(Nsite)*(s_e2-s_e*s_e)/(T*T)
 
+@numba.njit(nopython=True, nogil=True)
 def chi(T):
     s_e, s_e2, s_m, s_m2, s_m4, s_me, s_m2e, s_m4e = get_avg(T)
     return np.double(Nsite)*(s_m2-s_m*s_m)/(T)
     
+@numba.njit(nopython=True, nogil=True)
 def dm_dbeta(T):
    s_e, s_e2, s_m, s_m2, s_m4, s_me, s_m2e, s_m4e = get_avg(T)
-
    return np.double(Nsite)*(s_m*s_e - s_me)
 
+@numba.njit(nopython=True, nogil=True)
 def binder(T):
    s_e, s_e2, s_m, s_m2, s_m4, s_me, s_m2e, s_m4e = get_avg(T)
-
    return 1.0 - s_m4/(s_m2*s_m2*3.0)
 
+@numba.njit(nopython=True, nogil=True)
 def dbinder_dbeta(T):
    s_e, s_e2, s_m, s_m2, s_m4, s_me, s_m2e, s_m4e = get_avg(T)
-
    return np.double(Nsite)*(s_m2*(s_m4e+s_m4*s_e) - 2.0*s_m4*s_m2e)/(3.0*s_m2*s_m2*s_m2)
 
 def scan_T():
@@ -192,6 +200,7 @@ def scan_T():
             s_e, s_e2, s_m, s_m2, s_m4, s_me, s_m2e, s_m4e = get_avg(T)
             out.writelines("{:.3f},{:11.8e},{:11.8e},{:11.8e},{:11.8e},{:11.8e},{:11.8e},{:11.8e}\n".format(T, s_m/Nsite, np.double(Nsite)*(s_m2-s_m*s_m)/(T), s_e, np.double(Nsite)*(s_e2-s_e*s_e)/(T*T), np.double(Nsite)*(s_m*s_e - s_me), 1.0 - s_m4/(s_m2*s_m2*3.0), np.double(Nsite)*(s_m2*(s_m4e+s_m4*s_e) - 2.0*s_m4*s_m2e)/(3.0*s_m2*s_m2*s_m2) ))
     
+#@numba.njit(nopython=True, nogil=True)
 def golden(ax, bx, cx, f, tol):
     R = 0.61803399
     C = (1.0-R)
@@ -205,10 +214,12 @@ def golden(ax, bx, cx, f, tol):
     f1, f2 = f(x1), f(x2)
     while abs(x3 - x0) > tol * (abs(x1) + abs(x2)):
         if f2>f1:
-            x0, x1, x2 = x1, x2, R*x1+C*x3
+            x0, x1 = x1, x2
+            x2 = R*x1+C*x3
             f1, f2 = f2, f(x2)
         else:
-            x3, x2, x1 = x2, x1, R*x2+C*x0
+            x3, x2 = x2, x1
+            x1 = R*x2+C*x0
             f2, f1 = f1, f(x1)
     
     if f1 > f2:
